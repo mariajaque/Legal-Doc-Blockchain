@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { create as ipfsHttpClient } from "ipfs-http-client";
-import abi from "./abis/contracts/LegalDocumentManager.sol/LegalDocumentManager.json";
+import artifact from "./abis/contracts/LegalDocumentManager.sol/LegalDocumentManager.json";
 import "./App.css";
 
 const ipfs = ipfsHttpClient({ url: "http://127.0.0.1:5001/api/v0" });
@@ -18,7 +18,7 @@ export default function App() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = await provider.getSigner();
-      setContract(new ethers.Contract(CONTRACT_ADDRESS, abi, signer));
+      setContract(new ethers.Contract(CONTRACT_ADDRESS, artifact.abi, signer));
     })();
   }, []);
 
