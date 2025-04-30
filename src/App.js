@@ -1,26 +1,21 @@
 import { useState } from "react";
 import { ethers } from "ethers";
-import { Web3Storage } from "web3.storage";
 import deployment from "../ignition/deployments/localhost/LegalDocModule.json";
+import { uploadToPinata } from "./utils/uploadToPinata";
 
 const CONTRACT = deployment.contracts.LegalDocumentManager.address;
-const ABI      = deployment.artifacts.LegalDocumentManager.abi; // Ignition ships ABI
+const ABI      = deployment.artifacts.LegalDocumentManager.abi;
 
-/* ---------- helpers ---------- */
-
-// turn ArrayBuffer → hex string with 0x-prefix
-const toHex = buf =>
+const toHex = (buf) =>
   "0x" +
   [...new Uint8Array(buf)]
-    .map(b => b.toString(16).padStart(2, "0"))
+    .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
 async function sha256(arrayBuffer) {
-  const hashBuf = await crypto.subtle.digest("SHA-256", arrayBuffer); // :contentReference[oaicite:0]{index=0}
+  const hashBuf = await crypto.subtle.digest("SHA-256", arrayBuffer);
   return toHex(hashBuf);
 }
-
-/* ---------- main React component ---------- */
 
 export default function App() {
   const [status, setStatus] = useState("");
@@ -30,31 +25,35 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
 
-    setStatus("Hashing…");
+    try {
+      setStatus("Hashing…");
 
-    // 1️⃣   Hash locally
-    const arrayBuf = await file.arrayBuffer();
-    const hash = await sha256(arrayBuf);
+      // 1 Hash the file
+      const arrayBuf = await file.arrayBuffer();
+      const hash = await sha256(arrayBuf);
 
-    // 2️⃣   Upload to IPFS / Filecoin via web3.storage
-    setStatus("Uploading to IPFS…");
-    const client = new Web3Storage({ token: process.env.REACT_APP_W3_TOKEN }); // :contentReference[oaicite:1]{index=1}
-    const cid = await client.put([file]);                                       // :contentReference[oaicite:2]{index=2}
-    const gatewayUrl = `https://${cid}.ipfs.w3s.link/${file.name}`;
+      // 2 Upload to Pinata
+      setStatus("Uploading to IPFS (Pinata)...");
+      const cid = await uploadToPinata(file);
+      const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
 
-    // 3️⃣   Write on-chain
-    setStatus("Waiting for wallet…");
-    await window.ethereum?.request({ method: "eth_requestAccounts" });
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer   = await provider.getSigner();
-    const mgr      = new ethers.Contract(CONTRACT, ABI, signer);
+      // 3 Register on-chain
+      setStatus("Connecting wallet…");
+      await window.ethereum?.request({ method: "eth_requestAccounts" });
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer   = await provider.getSigner();
+      const mgr      = new ethers.Contract(CONTRACT, ABI, signer);
 
-    setStatus("Sending transaction…");
-    const tx = await mgr.storeDocument(hash, cid);
-    await tx.wait();
+      setStatus("Sending transaction...");
+      const tx = await mgr.storeDocument(hash, cid);
+      await tx.wait();
 
-    setStatus(`✅ Stored!  Tx: ${tx.hash.slice(0, 10)}…`);
-    setFileUrl(gatewayUrl);
+      setStatus(`✅ Stored! Tx: ${tx.hash.slice(0, 10)}...`);
+      setFileUrl(gatewayUrl);
+    } catch (err) {
+      console.error(err);
+      setStatus(`❌ Error: ${err.message}`);
+    }
   }
 
   return (
