@@ -26,23 +26,26 @@ export default function App() {
   const onFile = async (e) => {
     const f = e.target.files[0];
     if (!f || !contract) return;
-
+  
     // 2-a hash
     const buf = await f.arrayBuffer();
     const digest = await crypto.subtle.digest("SHA-256", buf);
     const hash =
       "0x" +
       [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");
+  
+    // 2-b IPFS: add with pin
+    const { cid } = await ipfs.add(f, { pin: true });
 
-    // 2-b IPFS
-    const { cid } = await ipfs.add(f);
-
+    await ipfs.pin.add(cid);
+  
     // 2-c on-chain
     const tx = await contract.storeDocument(hash, cid.toString());
     await tx.wait();
-
+  
     setDocs((d) => [...d, { hash, cid: cid.toString() }]);
   };
+  
 
   return (
     <main className="p-6 font-sans">
