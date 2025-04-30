@@ -36,7 +36,9 @@ export default function App() {
     const digest = await crypto.subtle.digest("SHA-256", buf);
     const hash =
       "0x" +
-      [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");
+      [...new Uint8Array(digest)]
+        .map((x) => x.toString(16).padStart(2, "0"))
+        .join("");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -76,7 +78,7 @@ export default function App() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${cid}`;
+      a.download = cid;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -85,49 +87,58 @@ export default function App() {
       console.error("Download failed", err);
     }
   };
-  
 
   return (
     <>
       <header>
-        <div className="logo">⚖️</div>
+        <div className="logo" aria-hidden="true">⚖️</div>
         <h1>Legal Doc Vault</h1>
       </header>
 
       <main>
-        <div className="container">
-          <label className="block mb-6">
-            <span className="text-gray-700 font-medium">Select PDF / DOCX file</span>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={onFile}
-              className="mt-2"
-            />
-          </label>
+        <section className="container" aria-label="Uploader">
+          <h2>Upload a Document</h2>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={onFile}
+            aria-label="Select a PDF or DOCX file"
+          />
+        </section>
 
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Your Documents</h2>
-          <ul className="space-y-2">
+        <section className="container" aria-label="Document list">
+          <h2>Your Documents</h2>
+          <ul>
             {docs.map(({ hash, cid }) => (
               <li key={hash}>
                 <div>
+                  <strong>Hash:</strong>{" "}
                   <code>{hash}</code>
                 </div>
                 <div>
-                  CID: <a href={`https://gateway.pinata.cloud/ipfs/${cid}`} target="_blank" rel="noreferrer">{cid}</a>
+                  <strong>CID:</strong>{" "}
+                  <a href={`https://gateway.pinata.cloud/ipfs/${cid}`} target="_blank" rel="noreferrer">
+                    {cid}
+                  </a>
                 </div>
                 <div className="actions">
                   <button onClick={() => copyCID(cid)}>
                     {copiedCID === cid ? "Copied!" : "Copy CID"}
                   </button>
                   <button onClick={() => forceDownload(cid)}>Download</button>
-                  <button onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${cid}`, '_blank')}>Open</button>
+                  <button onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${cid}`, "_blank")}>
+                    Open
+                  </button>
                 </div>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       </main>
+
+      <footer>
+        &copy; {new Date().getFullYear()} María Jaque, Catalina Royo-Villanova and Victoria García
+      </footer>
     </>
   );
 }
