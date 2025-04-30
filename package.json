@@ -10,11 +10,17 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^0.15.11",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.23.0"
+    "buffer": "^6.0.3",
+    "ethers": "^6.13.7",
+    "hardhat": "^2.23.0",
+    "ipfs-http-client": "^60.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vite": "^6.3.3"
   },
   "dependencies": {
-    "ethers": "^6.13.7",
     "web3.storage": "^4.5.5"
   }
 }

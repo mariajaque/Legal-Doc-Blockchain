@@ -1,13 +1,15 @@
-// ignition/modules/LegalDocModule.js
-const { buildModule } = require("@nomicfoundation/hardhat-ignition/modules");
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 /**
- * Deploys a single instance of LegalDocumentManager.
- * Ignition will remember the address per network and
- * skip redeploying if it already exists.
+ * Single-contract deployment for LegalDocumentManager
+ *
+ * Ignition will compile, deploy, and export the address so you
+ * can copy it into frontend/.env as VITE_DOC_MANAGER.
  */
-module.exports = buildModule("LegalDocModule", (m) => {
-  // The contract name *must* match the .sol filename
+export default buildModule("LegalDocModule", (m) => {
+  // Deploy the contract with no constructor params
   const manager = m.contract("LegalDocumentManager");
+
+  // Return anything you want scripts/tests to access later
   return { manager };
 });

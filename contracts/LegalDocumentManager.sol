@@ -2,46 +2,51 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title  LegalDocumentManager
- * @notice Stores the SHA-256 hash (or IPFS CID) of a legal document, the
- *         owner who submitted it, and an optional metadata URI.  Once stored,
- *         entries are immutable, providing tamper-evidence on-chain.
+ * @title LegalDocumentManager
+ * @notice Registers SHA-256 hashes of legal docs plus their IPFS CIDs.
+ *         Registration is immutable and verifiable on-chain.
  */
 contract LegalDocumentManager {
     struct Document {
-        address owner;      // wallet that registered the doc
-        string  cid;        // IPFS content-identifier (raw doc encrypted, if desired)
-        uint256 timestamp;  // block time of registration
+        address owner;
+        string  cid;
+        uint256 timestamp;
     }
 
-    // docHash → Document
     mapping(bytes32 => Document) private documents;
 
-    /// Emitted whenever a new document is recorded
+    /// Emitted on first time storage
     event DocumentStored(bytes32 indexed docHash, address indexed owner, string cid);
+    /// Emitted each time somebody verifies an existing document
+    event DocumentVerified(bytes32 indexed docHash, address indexed viewer);
 
-    /**
-     * @dev Register a document. Fails if that hash already exists.
-     * @param docHash 32-byte SHA-256 digest computed off-chain
-     * @param cid     IPFS CID pointing to the document blob
-     */
+    /// Store a new document (reverts on duplicates)
     function storeDocument(bytes32 docHash, string calldata cid) external {
         require(documents[docHash].owner == address(0), "Document exists");
         documents[docHash] = Document(msg.sender, cid, block.timestamp);
         emit DocumentStored(docHash, msg.sender, cid);
     }
 
-    /// Read-only getter
-    function getDocument(bytes32 docHash) external view returns (
-        address owner, string memory cid, uint256 timestamp
-    ) {
+    /// Fetch full metadata
+    function getDocument(bytes32 docHash)
+        external
+        view
+        returns (address owner, string memory cid, uint256 timestamp)
+    {
         Document storage d = documents[docHash];
         require(d.owner != address(0), "Not found");
         return (d.owner, d.cid, d.timestamp);
     }
 
-    /// Lightweight existence / authenticity check
-    function verify(bytes32 docHash) external view returns (bool) {
+    /// True ⇢ registered, False ⇢ unknown
+    function documentExists(bytes32 docHash) public view returns (bool) {
         return documents[docHash].owner != address(0);
+    }
+
+    /// Read-only authenticity check + event
+    function verify(bytes32 docHash) external returns (bool) {
+        bool ok = documentExists(docHash);
+        if (ok) emit DocumentVerified(docHash, msg.sender);
+        return ok;
     }
 }
