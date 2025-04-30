@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { ethers } from "ethers";
-import deployment from "../ignition/deployments/localhost/LegalDocModule.json";
+import abi from "../abi/LegalDocumentManager.json"; // Asegúrate de crear este archivo
 import { uploadToPinata } from "./utils/uploadToPinata";
 
-const CONTRACT = deployment.contracts.LegalDocumentManager.address;
-const ABI      = deployment.artifacts.LegalDocumentManager.abi;
+// Dirección del contrato desplegado en Sepolia
+const CONTRACT = import.meta.env.VITE_DOC_MANAGER;
+const ABI = abi;
 
 const toHex = (buf) =>
   "0x" +
@@ -28,21 +29,21 @@ export default function App() {
     try {
       setStatus("Hashing…");
 
-      // 1 Hash the file
+      // 1. Hash the file
       const arrayBuf = await file.arrayBuffer();
       const hash = await sha256(arrayBuf);
 
-      // 2 Upload to Pinata
+      // 2. Upload to Pinata
       setStatus("Uploading to IPFS (Pinata)...");
       const cid = await uploadToPinata(file);
       const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
 
-      // 3 Register on-chain
+      // 3. Register on-chain
       setStatus("Connecting wallet…");
       await window.ethereum?.request({ method: "eth_requestAccounts" });
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer   = await provider.getSigner();
-      const mgr      = new ethers.Contract(CONTRACT, ABI, signer);
+      const signer = await provider.getSigner();
+      const mgr = new ethers.Contract(CONTRACT, ABI, signer);
 
       setStatus("Sending transaction...");
       const tx = await mgr.storeDocument(hash, cid);

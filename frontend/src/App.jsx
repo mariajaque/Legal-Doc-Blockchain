@@ -59,7 +59,9 @@ export default function App() {
     const data = await res.json();
     const cid = data.IpfsHash;
 
-    const tx = await contract.storeDocument(hash, cid);
+    const tx = await contract.storeDocument(hash, cid.toString(), {
+      gasLimit: 1000000, // Adjust as needed
+    });
     await tx.wait();
 
     setDocs((d) => [...d, { hash, cid }]);
@@ -93,6 +95,9 @@ export default function App() {
       <header>
         <div className="logo" aria-hidden="true">⚖️</div>
         <h1>Legal Doc Vault</h1>
+        <h1 className="contract-address">
+          Contract: {CONTRACT_ADDRESS}
+        </h1>
       </header>
 
       <main>
