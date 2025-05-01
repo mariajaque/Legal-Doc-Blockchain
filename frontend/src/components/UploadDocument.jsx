@@ -36,11 +36,18 @@ export default function UploadDocument({ docs, setDocs }) {
     }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
   };
 
-  const encryptData = async (data, password) => {
+  const encryptData = async (data, password, filename) => {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await getKeyFromPassword(password, salt);
-    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  
+    const payload = {
+      name: filename,
+      data: Array.from(new Uint8Array(data)), // convert ArrayBuffer to array
+    };
+    const encodedPayload = new TextEncoder().encode(JSON.stringify(payload));
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encodedPayload);
+  
     return new Blob([salt, iv, new Uint8Array(encrypted)]);
   };
 
@@ -50,7 +57,14 @@ export default function UploadDocument({ docs, setDocs }) {
     const iv = arrayBuffer.slice(16, 28);
     const data = arrayBuffer.slice(28);
     const key = await getKeyFromPassword(password, salt);
-    return crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
+  
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
+    const decoded = new TextDecoder().decode(decrypted);
+    const { name, data: rawData } = JSON.parse(decoded);
+    return {
+      filename: name,
+      buffer: new Uint8Array(rawData).buffer,
+    };
   };
 
   const onFile = (e) => {
@@ -60,7 +74,7 @@ export default function UploadDocument({ docs, setDocs }) {
     setModalTitle("Enter a password to encrypt the document");
     setPendingAction(() => async (password) => {
       const buf = await file.arrayBuffer();
-      const encryptedBlob = await encryptData(buf, password);
+      const encryptedBlob = await encryptData(buf, password, file.name);
       const digest = await crypto.subtle.digest("SHA-256", buf);
       const hash = "0x" + [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");
 
@@ -108,16 +122,15 @@ export default function UploadDocument({ docs, setDocs }) {
       try {
         const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
         if (!response.ok) throw new Error("Download failed");
-
+  
         const encryptedBlob = await response.blob();
-        const decryptedBuffer = await decryptData(encryptedBlob, password);
-
-        const url = window.URL.createObjectURL(new Blob([decryptedBuffer]));
+        const { filename, buffer } = await decryptData(encryptedBlob, password);
+  
+        const url = window.URL.createObjectURL(new Blob([buffer]));
         const a = document.createElement("a");
-        const doc = docs.find((d) => d.cid === cid);
-        a.download = doc?.name || "decrypted-file";
+        a.download = filename || "decrypted-file";
         a.href = url;
-
+  
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

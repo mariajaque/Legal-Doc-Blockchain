@@ -82,7 +82,14 @@ export default function RetrieveDocument() {
     const iv = arrayBuffer.slice(16, 28);
     const data = arrayBuffer.slice(28);
     const key = await getKeyFromPassword(password, salt);
-    return crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
+  
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
+    const decoded = new TextDecoder().decode(decrypted);
+    const { name, data: rawData } = JSON.parse(decoded);
+    return {
+      filename: name,
+      buffer: new Uint8Array(rawData).buffer,
+    };
   }
 
   const handleDownload = () => {
@@ -90,12 +97,12 @@ export default function RetrieveDocument() {
       try {
         const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
         const encryptedBlob = await response.blob();
-        const decryptedBuffer = await decryptData(encryptedBlob, password);
-        const blob = new Blob([decryptedBuffer]);
+        const { filename, buffer } = await decryptData(encryptedBlob, password);
+        const blob = new Blob([buffer]);
 
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = "document.pdf"; // or dynamic name if needed
+        a.download = filename || "document.pdf";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

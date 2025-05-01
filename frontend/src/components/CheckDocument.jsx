@@ -62,11 +62,16 @@ export default function VerifyDocument() {
         aria-label="Select a file"
       />
       {hash && (
-        <div>
-          <p><strong>Hash:</strong> <code>{hash}</code></p>
-          <button onClick={copyToClipboard}>
-            {copied ? "Copied!" : "Copy Hash"}
-          </button>
+        <div className="retrieve-result">
+          <div className="cid-wrapper">
+            <div className="cid-label">Hash:</div>
+            <code>{hash}</code>
+          </div>
+          <div className="actions">
+            <button onClick={copyToClipboard}>
+              {copied ? "Copied!" : "Copy Hash"}
+            </button>
+          </div>
         </div>
       )}
       {status && <p>{status}</p>}
