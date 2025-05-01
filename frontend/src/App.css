@@ -364,3 +364,59 @@ footer {
   color: #334155;
   margin-bottom: 1rem;
 }
+
+.about-section {
+  text-align: left;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.about-section p {
+  text-align: justify;
+}
+
+.highlight {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.pill-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pill-list li {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.2rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.pill-list.usage li {
+  background-color: #eef2f8;
+}
+
+.footnote {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.about-section .footnote {
+  text-align: center !important;
+}

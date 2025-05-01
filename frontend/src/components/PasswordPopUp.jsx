@@ -27,7 +27,7 @@ export default function PasswordPopUp({ isOpen, onSubmit, onCancel, title }) {
           onChange={(e) => setPassword(e.target.value)}
         />
         <div className="modal-actions">
-          <button onClick={handleSubmit}>Send</button>
+          <button onClick={handleSubmit}>Accept</button>
           <button onClick={handleCancel}>Cancel</button>
         </div>
       </div>
