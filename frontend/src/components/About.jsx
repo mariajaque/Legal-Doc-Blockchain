@@ -17,6 +17,10 @@ export default function About() {
           <p><em>Imagine this:</em> A lawyer receives a contract and needs to ensure it's the original, unedited version previously agreed upon. By checking the document's hash on Legal Doc Vault, the lawyer can instantly verify whether it was registered and remains unchanged—without needing to trust the sender or use centralized platforms.</p>
   
           <p>
+            <strong>What we built:</strong> Legal Doc Vault is a decentralized application (dApp) that allows users to upload, verify, and retrieve legal documents securely. It uses the Ethereum blockchain to store document hashes and IPFS for decentralized file storage, ensuring that documents are tamper-proof and easily verifiable. You can access the repository in the following link:
+            <a href="https://github.com/mariajaque/Legal-Doc-Blockchain.git" target="_blank" rel="noopener noreferrer"> GitHub Repository</a>.
+          </p>
+          <p>
             <strong>What this project does:</strong>
           </p>
           <ul className="pill-list">
