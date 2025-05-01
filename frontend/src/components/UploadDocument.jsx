@@ -156,10 +156,7 @@ export default function UploadDocument({ docs, setDocs }) {
                 <strong>Hash:</strong> <code>{hash}</code>
               </div>
               <div>
-                <strong>CID:</strong>{" "}
-                <a href={`https://gateway.pinata.cloud/ipfs/${cid}`} target="_blank" rel="noreferrer">
-                  {cid}
-                </a>
+                <strong>CID:</strong> <code>{cid}</code>
               </div>
               <div className="actions">
                 <button onClick={() => copyHash(hash)}>
@@ -169,9 +166,6 @@ export default function UploadDocument({ docs, setDocs }) {
                   {copiedCID === cid ? "Copied!" : "Copy CID"}
                 </button>
                 <button onClick={() => forceDownload(cid)}>Download</button>
-                <button onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${cid}`, "_blank")}>
-                  Open
-                </button>
               </div>
             </li>
           ))}

@@ -342,3 +342,25 @@ footer {
   text-align: center;
   margin-top: 1rem;
 }
+
+.cid-wrapper {
+  border-radius: 0.75rem;
+  word-break: break-all;
+}
+
+.cid-wrapper .cid-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #1f2937;
+}
+
+.cid-wrapper code {
+  display: block;
+  background-color: #e2e8f0;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 0.5rem;
+  font-family: 'Courier New', monospace;
+  color: #334155;
+  margin-bottom: 1rem;
+}
