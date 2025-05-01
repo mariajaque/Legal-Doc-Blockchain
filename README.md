@@ -31,8 +31,7 @@ Legal Doc Vault addresses this problem by combining three powerful tools:
 
 #### Real-Life Use Case
 
-> A lawyer receives a contract from a third party. Before signing, they want to confirm it's the original version previously agreed upon.  
->  
+> A lawyer receives a contract from a third party. Before signing, they want to confirm it's the original version previously agreed upon.
 > By dragging the document into the “Verify” tab of Legal Doc Vault, the system checks the document’s hash against the blockchain. If it was already registered, the lawyer can confirm it hasn’t been modified — all without needing to trust the sender or any centralized authority.
 
 
@@ -53,8 +52,9 @@ Legal Doc Vault addresses this problem by combining three powerful tools:
     - npm (v10.9.2)
     - Git (v2.37.1 or higher)
     - Hardhat (v2.23.0)
-    - IPFS Desktop (GUI)
     - MetaMask browser wallet
+    - Pinata account
+    - Alchemy account
 
     You can check if you have some of these installed by running the following commands in your terminal:
     ```bash
@@ -67,41 +67,16 @@ Legal Doc Vault addresses this problem by combining three powerful tools:
 
     - [Node.js and npm](https://nodejs.org/en/download)
     - [Git](https://git-scm.com/downloads)
-    - [IPFS Desktop](https://docs.ipfs.tech/install/ipfs-desktop/)
     - [MetaMask](https://metamask.io/download/)
 
-3. You can then install hardhat globally using npm:
+3. If you don't have an account in Pinata or Alchemy, you can create one for free. You can do it from the following links:
+    - [Pinata](https://pinata.cloud/)
+    - [Alchemy](https://www.alchemy.com/)
+
+4. You can then install hardhat globally using npm:
     ```bash
     npm i -g hardhat
     ```
-
-4. Verify that you have the correct configuration in your IPFS Desktop application. 
-
-    In the IPFS Desktop application, click on the settings icon. Then, scroll down until you find the **IPFS Config** section. There, you will find a json file with the IPFS configuration. You have to verify that the "API" section has the following configuration:
-    ```json
-      "API": {
-        "HTTPHeaders": {
-          "Access-Control-Allow-Credentials": [
-            "true"
-          ],
-          "Access-Control-Allow-Methods": [
-            "POST",
-            "PUT",
-            "GET",
-            "OPTIONS"
-          ],
-          "Access-Control-Allow-Origin": [
-            "https://webui.ipfs.io",
-            "http://webui.ipfs.io.ipns.localhost:8080",
-            "http://localhost:5173"
-          ],
-          "ListenAddress": [
-            "/ip4/127.0.0.1/tcp/5001"
-          ]
-        }
-      },
-    ```
-    If you have edited the json, click on the **Save** button to save the changes. Then, restart the IPFS daemon to apply them.
 
 ### 1. Clone the repository:
 
@@ -136,30 +111,45 @@ cd Legal-Doc-Blockchain
     VITE_PINATA_JWT=<JWT_TOKEN>
     ```
 
+### 4. Create an Alchemy new app:
+1. Create an Alchemy account at [Alchemy](https://www.alchemy.com/) if you don't have one.
+2. Go to the Alchemy dashboard and create a new app. Select the **Ethereum** network and the **Sepolia** testnet. This will generate the following:
+    - API key
+    - HTTP URL
+3. Copy the HTTP URL and paste it in the `.env` file in the root folder of the project in the following format:
+    ```bash
+    SEPOLIA_RPC_URL=<HTTP_URL>
+    ```
+
+### 5. Select the Sepolia network in your MetaMask wallet:
+1. Go to the MetaMask extension and click on the network selector on the top left corner. Then, select the `Sepolia` testnet. If you don't see it, make sure you have the `Show test networks` option enabled at the bottom of the networks list.
+2. Go to the account selector and, on your preferred account, click on the three dots on the right. There, choose the `Account details` option and copy the private key.
+3. Go to the `.env` file in the root folder of the project and paste the private key in the following format:
+    ```bash
+    SEPOLIA_RPC_URL=<HTTP_URL>
+    PRIVATE_KEY=<PRIVATE_KEY>
+    ```
+
 
 ## Usage guide
 ### 1. Open the first terminal and run:
 ```bash
 npx hardhat clean   # Clean the cache and artifacts
 npx hardhat compile # Compile the smart contracts
-
-npx hardhat node    # Start the local blockchain node
 ```
-This creates 20 accounts with 10.000 ETH each and starts a local blockchain node on port `8545`. You can use the first account to deploy the smart contracts.
-
 
 ### 2. Open a second terminal and run:
 ```bash
-npx hardhat ignition deploy ./ignition/modules/LegalDocModule.js --network localhost
+npx hardhat ignition deploy ./ignition/modules/LegalDocModule.js --network sepolia
 ```
-This will deploy the LegalDocModule smart contract to the local blockchain.
+This will deploy the LegalDocModule smart contract to the Sepolia testnet.
 
 You will have to copy the address of the deployed contract, and paste it in the `.env` file in the frontend folder. The file should look like this:
 ```bash
 VITE_DOC_MANAGER=<CONTRACT_ADDRESS>
 VITE_PINATA_JWT=<JWT_TOKEN>
 ```
-Where `<CONTRACT_ADDRESS>` is the address of the deployed contract. It will look something like this: `0x5FbDB2315678afecb367f032d93F642f64180aa3`.
+Where `<CONTRACT_ADDRESS>` is the address of the deployed contract.
 
 ### 3. Open a third terminal and run:
 ```bash
@@ -171,21 +161,5 @@ This will launch the web application on http://localhost:5173. This application 
 ### 4. Open the web application in your browser (http://localhost:5173) and connect your MetaMask wallet to the local blockchain.
 When opening the web application, you will be asked to connect your MetaMask wallet. You have to do it in order to be able to interact with the smart contract.
 
-### 5. Go to the MetaMask extension to create a custom network:
-To do it, go to the MetaMask extension and click on the top left corner symbol. There, you will see the network selector. Click on the `+ Add a custom network` button. Complete the form with the following parameters:
-- Network Name: Localhost 31337
-- Default RPC URL: http://127.0.0.1:8545/
-- Chain ID: 31337
-- Currency Symbol: ETH
-- Block Explorer URL: https://polygonscan.com/ (optional)
-
-Then, click on the `Save` button. You will now be able to select the Localhost 31337 network in your MetaMask wallet.
-
-
-### 6. Go to the MetaMask extension to create another account:
-To do it, go to the MetaMask extension and click on the account selector. Then click on the `+ Add account or hardware wallet` button. Then in the `Import a wallet or account`, select the `Private key` option. Paste the private key of the first account shown in the first terminal. Finally, click on the `Import` button.
-
-You will now be able to use the web application to interact with the LegalDocModule smart contract with this account, so you will be able to pay the gas fees with it.
-
-### 7. Interact with the web application:
-You can now use the web application to interact with the LegalDocModule smart contract. You can create, sign and verify legal documents. You can also upload and download files from IPFS using Pinata.
+### 5. Interact with the web application:
+You can now use the web application to interact with the LegalDocModule smart contract.
