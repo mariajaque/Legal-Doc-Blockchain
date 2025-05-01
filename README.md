@@ -5,8 +5,45 @@
 - Maria Jaque Oficialdegui
 - Catalina Royo-Villanova Seguí
 
-## Project description:
-This project is a web application that allows users to upload, verify and redownload legal documents using blockchain technology. The application is built using React and Hardhat, and it uses IPFS for file storage. The smart contracts are written in Solidity and deployed on a local blockchain using Hardhat. The application also uses Pinata to upload files to IPFS and retrieve them later.
+## Project Description
+
+**Legal Doc Vault** is a secure web application that enables users to upload, verify, and retrieve legal documents using blockchain and decentralized technologies. Built with **React** and **Hardhat**, the platform integrates **AES encryption**, **IPFS** (via **Pinata**), and smart contracts written in **Solidity** to ensure document integrity, privacy, and tamper-resistance.
+
+### Features
+
+- 🔐 **Secure upload** of documents encrypted with a user-defined password before storage.
+- 🧾 **Hash verification** to check if a document has been previously registered on-chain.
+- 📥 **Decryption-based retrieval**, requiring the correct password to access and download files.
+- 🌐 **Decentralized file storage** using **IPFS** and **Pinata**, ensuring availability without relying on centralized servers.
+- ⛓️ **Blockchain-backed authenticity**, with **SHA-256** hashes stored immutably via smart contracts.
+- 🧑‍💼 **User-friendly interface** with an “About” section that explains the purpose, usage, and real-world applications of the platform.
+
+
+### Why This Project
+
+In today’s digital era, verifying the authenticity of sensitive documents—such as contracts, academic certificates, or property deeds—is more critical than ever. Fraudulent documents can be easily altered or forged, and most users lack a secure way to prove that a file hasn’t been tampered with after being issued.
+
+Legal Doc Vault addresses this problem by combining three powerful tools:
+
+- **Blockchain** for immutable registration of document hashes.
+- **Encryption** for confidentiality during upload and storage.
+- **IPFS** for decentralized, persistent access to the document itself.
+
+#### Real-Life Use Case
+
+> A lawyer receives a contract from a third party. Before signing, they want to confirm it's the original version previously agreed upon.  
+>  
+> By dragging the document into the “Verify” tab of Legal Doc Vault, the system checks the document’s hash against the blockchain. If it was already registered, the lawyer can confirm it hasn’t been modified — all without needing to trust the sender or any centralized authority.
+
+
+### Tech Stack
+
+- **Frontend:** React, Vite
+- **Blockchain:** Solidity, Hardhat
+- **File Storage:** IPFS (via Pinata)
+- **Encryption:** Web Crypto API (AES-GCM)
+- **Smart Contract Deployment:** Local Hardhat network
+
 
 ## Installation guide
 ### 0. Pre-requisites:
