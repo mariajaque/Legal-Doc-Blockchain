@@ -5,8 +5,8 @@ export default function About() {
 
       <div className="about-section">
         <p>
-          <strong>Who we are:</strong> We are a team of three Computer Engineering students —
-          <span className="highlight"> María Jaque</span>, <span className="highlight">Catalina Royo-Villanova</span>, and <span className="highlight">Victoria García</span> —
+          <strong>Who we are:</strong> We are a team of three Computer Engineering students — 
+          <span className="highlight"> María Jaque</span>, <span className="highlight">Catalina Royo-Villanova</span>, and <span className="highlight">Victoria García</span> — 
           passionate about using cutting-edge technology to improve digital trust and document security through the use of blockchain and decentralized systems.
         </p>
 
@@ -21,6 +21,11 @@ export default function About() {
             href="https://github.com/mariajaque/Legal-Doc-Blockchain.git" target="_blank" rel="noopener noreferrer">GitHub Repository
           </a>.
         </p>
+
+        <p className="assumptions">
+          <strong>⚠ Assumptions:</strong> This website assumes there is a way to map a physical person to their Ethereum wallet address for the purposes of signing and verifying documents.
+        </p>
+
         <p>
           <strong>What this project does:</strong>
         </p>

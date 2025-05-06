@@ -173,15 +173,15 @@ export default function RetrieveDocument() {
 
       {cid && (
         <div className="retrieve-result">
-          {/* Display Timestamp First */}
           {timestamp && (
             <div className="timestamp-wrapper">
               <div className="timestamp-label">Uploaded at:</div>
-              <span>{timestamp}</span> {/* Display the timestamp */}
+              <span>{timestamp}</span>
             </div>
           )}
-
-          {/* Display CID */}
+          <div className="actions">
+            <button onClick={handleDownload}>Download</button>
+          </div>
           <div className="cid-wrapper">
             <div className="cid-label">CID:</div>
             <code>{cid}</code>
@@ -190,7 +190,6 @@ export default function RetrieveDocument() {
             <button onClick={() => copyCID(cid)}>
               {copiedCID === cid ? "Copied!" : "Copy CID"}
             </button>
-            <button onClick={handleDownload}>Download</button>
           </div>
           <div className="signature-wrapper">
             <div className="signature-label">Signature:</div>
