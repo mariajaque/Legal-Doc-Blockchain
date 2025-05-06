@@ -14,7 +14,7 @@ export default function UploadDocument({ docs, setDocs }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
-  const [loading, setLoading] = useState(false); // For spinner
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -33,29 +33,23 @@ export default function UploadDocument({ docs, setDocs }) {
       if (contract && signer) {
         const ownerAddress = await signer.getAddress();
         try {
-          // Fetch the documents only if contract and signer are available
-          const documents = await contract.getDocumentsByOwner(ownerAddress);
+          const documentHashes = [];
 
-          // Ensure documents is an array and not undefined or null
-          if (Array.isArray(documents) && documents.length > 0) {
-            const updatedDocs = documents.map(doc => {
-              // Ensure doc.owner is defined before calling hexlify
-              const owner = doc.owner ? ethers.utils.hexlify(doc.owner) : "Unknown";  // Fallback to "Unknown" if undefined
-
+          const updatedDocs = await Promise.all(
+            documentHashes.map(async (docHash) => {
+              const documentDetails = await contract.getDocument(docHash);
               return {
-                hash: owner,
-                cid: doc.cid || "N/A", // Ensure CID is not undefined
-                timestamp: new Date(doc.timestamp * 1000).toLocaleString(), // Format timestamp
+                hash: docHash,
+                cid: documentDetails.cid || "N/A",
+                timestamp: new Date(documentDetails.timestamp * 1000).toLocaleString(),
               };
-            });
+            })
+          );
 
-            setDocs(updatedDocs); // Update docs state with the fetched documents
-          } else {
-            setDocs([]); // Set empty docs if none are found
-          }
+          setDocs(updatedDocs);
         } catch (error) {
           console.error("Error fetching documents:", error);
-          setDocs([]); // Ensure docs is set to empty array if there's an error
+          setDocs([]);
         }
       }
     };
@@ -66,7 +60,6 @@ export default function UploadDocument({ docs, setDocs }) {
   const getDocumentDetails = async (docHash) => {
     try {
       const [owner, cid, timestamp, signature] = await contract.getDocument(docHash);
-      // Convert the BigInt timestamp to a normal number and then to a Date object
       const timestampString = new Date(Number(timestamp) * 1000).toLocaleString();
       return { owner, cid, timestamp: timestampString, signature };
     } catch (error) {
@@ -93,7 +86,7 @@ export default function UploadDocument({ docs, setDocs }) {
 
     const payload = {
       name: filename,
-      data: Array.from(new Uint8Array(data)), // convert ArrayBuffer to array
+      data: Array.from(new Uint8Array(data)),
     };
     const encodedPayload = new TextEncoder().encode(JSON.stringify(payload));
     const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encodedPayload);
@@ -123,14 +116,13 @@ export default function UploadDocument({ docs, setDocs }) {
 
     setModalTitle("Enter a password to encrypt the document");
     setPendingAction(() => async (password) => {
-      setLoading(true); // Show spinner while processing
+      setLoading(true);
 
       const buf = await file.arrayBuffer();
       const encryptedBlob = await encryptData(buf, password, file.name);
       const digest = await crypto.subtle.digest("SHA-256", buf);
       const hash = "0x" + [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");
 
-      // Hash digital signature
       const signature = await signer.signMessage(hash);
 
       const formData = new FormData();
@@ -144,7 +136,7 @@ export default function UploadDocument({ docs, setDocs }) {
 
       if (!res.ok) {
         console.error("Error uploading to Pinata:", await res.text());
-        setLoading(false); // Hide spinner
+        setLoading(false);
         return;
       }
 
@@ -152,14 +144,16 @@ export default function UploadDocument({ docs, setDocs }) {
       const cid = data.IpfsHash;
 
       try {
-        const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 1000000 });
+        const cidBytes32 = ethers.utils.formatBytes32String(cid);
+        const signatureBytes32 = ethers.utils.formatBytes32String(signature);
+
+        const tx = await contract.storeDocument(hash, cidBytes32, signatureBytes32, { gasLimit: 100 });
         await tx.wait();
       } catch (err) {
         console.error("Error storing document in contract:", err);
-        setLoading(false); // Hide spinner
+        setLoading(false);
       }
 
-      // Fetch the document details, including the timestamp, after storing the document
       const documentDetails = await getDocumentDetails(hash);
 
       if (documentDetails) {
@@ -169,12 +163,12 @@ export default function UploadDocument({ docs, setDocs }) {
             hash, 
             cid, 
             name: file.name, 
-            timestamp: documentDetails.timestamp // Get the timestamp from contract
+            timestamp: documentDetails.timestamp 
           }
         ]);
       }
       e.target.value = null;
-      setLoading(false); // Hide spinner
+      setLoading(false);
     });
     setModalOpen(true);
   };
@@ -242,34 +236,34 @@ export default function UploadDocument({ docs, setDocs }) {
 
       <section className="container" aria-label="Document list">
         <h2>Your Documents</h2>
-        {docs.length === 0 ? (
+        {docs.length === 0 ?
           <p>No documents found</p> // Display message if no documents found
-        ) : (
-          <ul>
-            {docs.map(({ hash, cid, timestamp }) => (
-              <li key={hash}>
-                <div>
-                  <strong>Uploaded at:</strong> <span>{timestamp}</span> {/* Display Timestamp */}
-                </div>
-                <div>
-                  <strong>Hash:</strong> <code>{hash}</code>
-                </div>
-                <div>
-                  <strong>CID:</strong> <code>{cid}</code>
-                </div>
-                <div className="actions">
-                  <button onClick={() => copyHash(hash)}>
-                    {copiedHash === hash ? "Copied!" : "Copy Hash"}
-                  </button>
-                  <button onClick={() => copyCID(cid)}>
-                    {copiedCID === cid ? "Copied!" : "Copy CID"}
-                  </button>
-                  <button onClick={() => forceDownload(cid)}>Download</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+          : (
+            <ul>
+              {docs.map(({ hash, cid, timestamp }) => (
+                <li key={hash}>
+                  <div>
+                    <strong>Uploaded at:</strong> <span>{timestamp}</span>
+                  </div>
+                  <div>
+                    <strong>Hash:</strong> <code>{hash}</code>
+                  </div>
+                  <div>
+                    <strong>CID:</strong> <code>{cid}</code>
+                  </div>
+                  <div className="actions">
+                    <button onClick={() => copyHash(hash)}>
+                      {copiedHash === hash ? "Copied!" : "Copy Hash"}
+                    </button>
+                    <button onClick={() => copyCID(cid)}>
+                      {copiedCID === cid ? "Copied!" : "Copy CID"}
+                    </button>
+                    <button onClick={() => forceDownload(cid)}>Download</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
       </section>
 
       <PasswordPopUp

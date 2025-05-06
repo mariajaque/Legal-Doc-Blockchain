@@ -10,62 +10,54 @@ pragma solidity ^0.8.20;
 contract LegalDocumentManager {
     struct Document {
         address owner;      // wallet that registered the doc
-        string  cid;        // IPFS content-identifier (raw doc encrypted, if desired)
+        bytes32 cid;        // IPFS content-identifier (raw doc encrypted, if desired)
         uint256 timestamp;  // block time of registration
-        string  signature;  // digital signature of the doc hash (signed by the wallet)
+        bytes32 signature;  // digital signature of the doc hash (signed by the wallet)
     }
 
-    // docHash → Document
+    // Mapping to store documents by their hash (more gas efficient than arrays)
     mapping(bytes32 => Document) private documents;
 
-    // Mapping to store documents per owner (address)
-    mapping(address => bytes32[]) private ownerDocuments;
-
     /// Emitted whenever a new document is recorded
-    event DocumentStored(bytes32 indexed docHash, address indexed owner, string cid, string signature);
+    event DocumentStored(bytes32 indexed docHash, address indexed owner, bytes32 cid, bytes32 signature);
 
     /**
      * @dev Register a document. Fails if that hash already exists.
      * @param docHash 32-byte SHA-256 digest computed off-chain
-     * @param cid     IPFS CID pointing to the document blob
-     * @param signature Digital signature of the hash, signed off-chain
+     * @param cid     IPFS CID pointing to the document blob (stored as bytes32)
+     * @param signature Digital signature of the hash, signed off-chain (stored as bytes32)
      */
-    function storeDocument(bytes32 docHash, string calldata cid, string calldata signature) external {
+    function storeDocument(bytes32 docHash, bytes32 cid, bytes32 signature) external {
+        // Ensure the document doesn't already exist
         require(documents[docHash].owner == address(0), "Document exists");
-        
+
         // Store the document for the owner
         documents[docHash] = Document(msg.sender, cid, block.timestamp, signature);
-        ownerDocuments[msg.sender].push(docHash);  // Save the document hash under the owner's address
 
         emit DocumentStored(docHash, msg.sender, cid, signature);
     }
 
-    /// Read-only getter to retrieve a document by its hash
+    /**
+     * @dev Read-only getter to retrieve a document by its hash
+     * @param docHash The SHA-256 hash of the document
+     * @return owner The address of the document owner
+     * @return cid The IPFS CID of the document
+     * @return timestamp The registration timestamp of the document
+     * @return signature The digital signature of the document hash
+     */
     function getDocument(bytes32 docHash) external view returns (
-        address owner, string memory cid, uint256 timestamp, string memory signature
+        address owner, bytes32 cid, uint256 timestamp, bytes32 signature
     ) {
         Document storage d = documents[docHash];
-        require(d.owner != address(0), "Not found");
+        require(d.owner != address(0), "Document not found");
         return (d.owner, d.cid, d.timestamp, d.signature);
     }
 
-    /// Read-only getter to retrieve all documents by the owner's address
-    function getDocumentsByOwner(address owner) external view returns (Document[] memory) {
-        // Ensure the caller is the owner or has valid permission
-        require(msg.sender == owner, "You are not the owner of these documents");
-
-        uint count = ownerDocuments[owner].length;
-        Document[] memory ownerDocs = new Document[](count);
-
-        for (uint i = 0; i < count; i++) {
-            bytes32 docHash = ownerDocuments[owner][i];
-            ownerDocs[i] = documents[docHash];
-        }
-
-        return ownerDocs;
-    }
-
-    /// Lightweight existence / authenticity check
+    /**
+     * @dev Verify if a document exists (lightweight check)
+     * @param docHash The SHA-256 hash of the document
+     * @return bool Whether the document exists or not
+     */
     function verify(bytes32 docHash) external view returns (bool) {
         return documents[docHash].owner != address(0);
     }
