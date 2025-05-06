@@ -38,7 +38,7 @@ export default function RetrieveDocument() {
       } else {
         setCID(ipfsCID);
         setSignature(sig);
-        setRecoveredAddress(null);
+        setRecoveredAddress(null); // Reset address when a new document is fetched
         setError(null);
       }
     } catch (err) {
@@ -47,15 +47,18 @@ export default function RetrieveDocument() {
     }
   };
 
-  const verifySignature = () => {
-    try {
-      const recovered = ethers.verifyMessage(hash, signature);
-      setRecoveredAddress(recovered);
-    } catch (err) {
-      alert("Invalid signature");
-      console.error(err);
+  // Automatically verify the signature and get the recovered address
+  useEffect(() => {
+    if (signature) {
+      try {
+        const recovered = ethers.verifyMessage(hash, signature);
+        setRecoveredAddress(recovered);
+      } catch (err) {
+        console.error("Error verifying the signature", err);
+        setRecoveredAddress(null); // Reset if verification fails
+      }
     }
-  };
+  }, [signature, hash]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") retrieve();
@@ -64,6 +67,12 @@ export default function RetrieveDocument() {
   const copyCID = (cid) => {
     navigator.clipboard.writeText(cid);
     setCopiedCID(cid);
+    setTimeout(() => setCopiedCID(null), 2000);
+  };
+
+  const copySignature = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCID(text);
     setTimeout(() => setCopiedCID(null), 2000);
   };
 
@@ -160,9 +169,22 @@ export default function RetrieveDocument() {
             <button onClick={handleDownload}>Download</button>
           </div>
           <div className="signature-wrapper">
-            <p><strong>Signature:</strong> {signature?.slice(0, 20)}... (click verify)</p>
-            <button onClick={verifySignature}>Verify Author</button>
-            {recoveredAddress && <p><strong>Signed by:</strong> {recoveredAddress}</p>}
+            <div className="signature-label">Signature:</div>
+            <code>{signature}</code>
+          </div>
+          <div className="actions">
+            <button onClick={() => copySignature(signature)}>
+              {copiedCID === signature ? "Copied!" : "Copy Signature"}
+            </button>
+          </div>
+          <div className="address-wrapper">
+            <div className="address-label">Recovered Address:</div>
+            <code>{recoveredAddress || "Not verified yet"}</code>
+          </div>
+          <div className="actions">
+            <button onClick={() => copySignature(recoveredAddress)}>
+              {copiedCID === recoveredAddress ? "Copied!" : "Copy Address"}
+            </button>
           </div>
         </div>
       )}

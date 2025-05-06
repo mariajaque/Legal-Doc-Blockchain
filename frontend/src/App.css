@@ -342,18 +342,25 @@ footer {
   margin-top: 1rem;
 }
 
-.cid-wrapper {
+.cid-wrapper,
+.signature-wrapper,
+.address-wrapper {
   border-radius: 0.75rem;
   word-break: break-all;
+  margin-top: 1rem;
 }
 
-.cid-wrapper .cid-label {
+.cid-wrapper .cid-label,
+.signature-wrapper .signature-label,
+.address-wrapper .address-label {
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: #1f2937;
 }
 
-.cid-wrapper code {
+.cid-wrapper code,
+.signature-wrapper code,
+.address-wrapper code {
   display: block;
   background-color: #e2e8f0;
   padding: 0.6rem 0.8rem;
@@ -418,4 +425,28 @@ footer {
 
 .about-section .footnote {
   text-align: center !important;
+}
+
+.verify-form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: nowrap;
+}
+
+.verify-form input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  transition: border-color 0.2s ease-in-out;
+}
+
+.verify-form input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background-color: #fff;
 }

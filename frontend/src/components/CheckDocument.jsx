@@ -6,8 +6,11 @@ const CONTRACT_ADDRESS = import.meta.env.VITE_DOC_MANAGER;
 
 export default function VerifyDocument() {
   const [contract, setContract] = useState();
-  const [status, setStatus] = useState("");
+  const [file, setFile] = useState(null);
+  const [inputAddress, setInputAddress] = useState("");
   const [hash, setHash] = useState("");
+  const [status, setStatus] = useState("");
+  const [matchStatus, setMatchStatus] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -20,13 +23,13 @@ export default function VerifyDocument() {
     })();
   }, []);
 
-  const onFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !contract) return;
+  const handleVerify = async () => {
+    if (!file || !inputAddress || !contract) return;
 
     setStatus("Calculating hash…");
     setHash("");
     setCopied(false);
+    setMatchStatus("");
 
     try {
       const buffer = await file.arrayBuffer();
@@ -39,7 +42,20 @@ export default function VerifyDocument() {
       setHash(h);
 
       const exists = await contract.verify(h);
-      setStatus(exists ? "✅ Document is registered on the blockchain" : "❌ Document is NOT registered");
+      if (!exists) {
+        setStatus("❌ Document is NOT registered on the blockchain");
+        return;
+      }
+
+      setStatus("✅ Document is registered on the blockchain");
+
+      const [, , , signature] = await contract.getDocument(h);
+      const recovered = ethers.verifyMessage(h, signature);
+      if (recovered.toLowerCase() === inputAddress.toLowerCase()) {
+        setMatchStatus("✅ The document was signed by the provided address.");
+      } else {
+        setMatchStatus("❌ The signature does NOT match the provided address.");
+      }
     } catch (err) {
       console.error(err);
       setStatus("Error during verification.");
@@ -54,13 +70,35 @@ export default function VerifyDocument() {
 
   return (
     <section className="container" aria-label="Verifier">
-      <h2>Verify Document</h2>
+      <h2>Verify Document and Signature</h2>
       <input
         type="file"
         accept=".pdf,.doc,.docx"
-        onChange={onFile}
+        onChange={(e) => setFile(e.target.files[0])}
         aria-label="Select a file"
       />
+
+      <div className="verify-form">
+        <input
+          type="text"
+          placeholder="Enter Ethereum address"
+          value={inputAddress}
+          onChange={(e) => setInputAddress(e.target.value)}
+          aria-label="Address input"
+          style={{ marginTop: "10px", width: "100%" }}
+        />
+      </div>
+
+      <div className="actions">
+        <button
+          onClick={handleVerify}
+          disabled={!file || !inputAddress}
+          style={{ marginTop: "10px" }}
+        >
+          Verify
+        </button>
+      </div>
+
       {hash && (
         <div className="retrieve-result">
           <div className="cid-wrapper">
@@ -75,6 +113,7 @@ export default function VerifyDocument() {
         </div>
       )}
       {status && <p>{status}</p>}
+      {matchStatus && <p>{matchStatus}</p>}
     </section>
   );
 }
