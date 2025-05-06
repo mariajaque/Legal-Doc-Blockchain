@@ -144,10 +144,7 @@ export default function UploadDocument({ docs, setDocs }) {
       const cid = data.IpfsHash;
 
       try {
-        const cidBytes32 = ethers.utils.formatBytes32String(cid);
-        const signatureBytes32 = ethers.utils.formatBytes32String(signature);
-
-        const tx = await contract.storeDocument(hash, cidBytes32, signatureBytes32, { gasLimit: 100 });
+        const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 100000 });
         await tx.wait();
       } catch (err) {
         console.error("Error storing document in contract:", err);
