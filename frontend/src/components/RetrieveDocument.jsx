@@ -11,6 +11,7 @@ export default function RetrieveDocument() {
   const [cid, setCID] = useState(null);
   const [signature, setSignature] = useState(null);
   const [recoveredAddress, setRecoveredAddress] = useState(null);
+  const [timestamp, setTimestamp] = useState(""); // State for timestamp
   const [copiedCID, setCopiedCID] = useState(null);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -26,6 +27,17 @@ export default function RetrieveDocument() {
     })();
   }, []);
 
+  const getDocumentTimestamp = async (docHash) => {
+    try {
+      const [, , timestamp] = await contract.getDocument(docHash);
+      const timestampString = new Date(Number(timestamp) * 1000).toLocaleString(); // Convert BigInt to number
+      setTimestamp(timestampString); // Set timestamp in state
+    } catch (error) {
+      console.error("Error fetching document timestamp:", error);
+      setTimestamp(""); // Reset timestamp in case of error
+    }
+  };
+
   const retrieve = async () => {
     if (!hash || !contract) return;
 
@@ -40,6 +52,9 @@ export default function RetrieveDocument() {
         setSignature(sig);
         setRecoveredAddress(null); // Reset address when a new document is fetched
         setError(null);
+
+        // Fetch timestamp after document retrieval
+        await getDocumentTimestamp(hash); // Get the timestamp
       }
     } catch (err) {
       console.error(err);
@@ -158,6 +173,15 @@ export default function RetrieveDocument() {
 
       {cid && (
         <div className="retrieve-result">
+          {/* Display Timestamp First */}
+          {timestamp && (
+            <div className="timestamp-wrapper">
+              <div className="timestamp-label">Uploaded at:</div>
+              <span>{timestamp}</span> {/* Display the timestamp */}
+            </div>
+          )}
+
+          {/* Display CID */}
           <div className="cid-wrapper">
             <div className="cid-label">CID:</div>
             <code>{cid}</code>

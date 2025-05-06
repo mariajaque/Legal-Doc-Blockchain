@@ -11,6 +11,7 @@ export default function VerifyDocument() {
   const [hash, setHash] = useState("");
   const [status, setStatus] = useState("");
   const [matchStatus, setMatchStatus] = useState("");
+  const [timestamp, setTimestamp] = useState(""); // State for timestamp
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -23,11 +24,23 @@ export default function VerifyDocument() {
     })();
   }, []);
 
+  const getDocumentTimestamp = async (docHash) => {
+    try {
+      const [, , timestamp] = await contract.getDocument(docHash);
+      const timestampString = new Date(Number(timestamp) * 1000).toLocaleString(); // Convert BigInt to number
+      setTimestamp(timestampString); // Set timestamp in state
+    } catch (error) {
+      console.error("Error fetching document timestamp:", error);
+      setTimestamp("");
+    }
+  };
+
   const handleVerify = async () => {
     if (!file || !inputAddress || !contract) return;
 
     setStatus("Calculating hash…");
     setHash("");
+    setTimestamp(""); // Reset timestamp on new verification attempt
     setCopied(false);
     setMatchStatus("");
 
@@ -48,6 +61,9 @@ export default function VerifyDocument() {
       }
 
       setStatus("✅ Document is registered on the blockchain");
+
+      // Fetch document details including the timestamp
+      await getDocumentTimestamp(h); // Fetch the timestamp
 
       const [, , , signature] = await contract.getDocument(h);
       const recovered = ethers.verifyMessage(h, signature);
@@ -101,6 +117,15 @@ export default function VerifyDocument() {
 
       {hash && (
         <div className="retrieve-result">
+          {/* Display Timestamp First */}
+          {timestamp && (
+            <div className="timestamp-wrapper">
+              <div className="timestamp-label">Uploaded at:</div>
+              <span>{timestamp}</span> {/* Display the timestamp */}
+            </div>
+          )}
+
+          {/* Display Hash */}
           <div className="cid-wrapper">
             <div className="cid-label">Hash:</div>
             <code>{hash}</code>
@@ -112,6 +137,7 @@ export default function VerifyDocument() {
           </div>
         </div>
       )}
+      
       {status && <p>{status}</p>}
       {matchStatus && <p>{matchStatus}</p>}
     </section>

@@ -27,6 +27,41 @@ export default function UploadDocument({ docs, setDocs }) {
     })();
   }, []);
 
+  useEffect(() => {
+    const fetchDocumentDetails = async () => {
+      if (contract) {
+        const updatedDocs = [];
+        for (const doc of docs) {
+          const { hash } = doc;
+          const documentDetails = await getDocumentDetails(hash);
+          if (documentDetails) {
+            updatedDocs.push({
+              ...doc,
+              timestamp: documentDetails.timestamp,
+            });
+          } else {
+            updatedDocs.push(doc); // Fallback if no details found
+          }
+        }
+        setDocs(updatedDocs);
+      }
+    };
+
+    fetchDocumentDetails();
+  }, [contract, docs, setDocs]);
+
+  const getDocumentDetails = async (docHash) => {
+    try {
+      const [owner, cid, timestamp, signature] = await contract.getDocument(docHash);
+      // Convert the BigInt timestamp to a normal number and then to a Date object
+      const timestampString = new Date(Number(timestamp) * 1000).toLocaleString(); // Convert BigInt to number
+      return { owner, cid, timestamp: timestampString, signature }; // Convert timestamp to string for display
+    } catch (error) {
+      console.error("Error fetching document details:", error);
+      return null;
+    }
+  };
+
   const getKeyFromPassword = async (password, salt) => {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
@@ -103,7 +138,20 @@ export default function UploadDocument({ docs, setDocs }) {
       const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 1000000 });
       await tx.wait();
 
-      setDocs((d) => [...d, { hash, cid, name: file.name }]);
+      // Fetch the document details, including the timestamp, after storing the document
+      const documentDetails = await getDocumentDetails(hash);
+
+      if (documentDetails) {
+        setDocs((d) => [
+          ...d,
+          { 
+            hash, 
+            cid, 
+            name: file.name, 
+            timestamp: documentDetails.timestamp // Get the timestamp from contract
+          }
+        ]);
+      }
       e.target.value = null;
     });
     setModalOpen(true);
@@ -168,8 +216,11 @@ export default function UploadDocument({ docs, setDocs }) {
       <section className="container" aria-label="Document list">
         <h2>Your Documents</h2>
         <ul>
-          {docs.map(({ hash, cid }) => (
+          {docs.map(({ hash, cid, timestamp }) => (
             <li key={hash}>
+              <div>
+                <strong>Uploaded at:</strong> <span>{timestamp}</span> {/* Display Timestamp */}
+              </div>
               <div>
                 <strong>Hash:</strong> <code>{hash}</code>
               </div>

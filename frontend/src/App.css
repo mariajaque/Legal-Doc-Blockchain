@@ -345,7 +345,8 @@ footer {
 
 .cid-wrapper,
 .signature-wrapper,
-.address-wrapper {
+.address-wrapper,
+.timestamp-wrapper {
   border-radius: 0.75rem;
   word-break: break-all;
   margin-top: 1rem;
@@ -353,7 +354,8 @@ footer {
 
 .cid-wrapper .cid-label,
 .signature-wrapper .signature-label,
-.address-wrapper .address-label {
+.address-wrapper .address-label,
+.timestamp-wrapper .timestamp-label {
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: #1f2937;
@@ -361,7 +363,8 @@ footer {
 
 .cid-wrapper code,
 .signature-wrapper code,
-.address-wrapper code {
+.address-wrapper code,
+.timestamp-wrapper code {
   display: block;
   background-color: #e2e8f0;
   padding: 0.6rem 0.8rem;
@@ -450,4 +453,32 @@ footer {
   outline: none;
   border-color: #3b82f6;
   background-color: #fff;
+}
+
+.timestamp-wrapper span {
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.message {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f4f4f4;
+  color: #333;
+  border-radius: 5px;
+  font-size: 1rem;
 }
