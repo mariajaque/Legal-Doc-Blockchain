@@ -8,6 +8,7 @@ const PINATA_JWT = import.meta.env.VITE_PINATA_JWT;
 
 export default function UploadDocument({ docs, setDocs }) {
   const [contract, setContract] = useState();
+  const [signer, setSigner] = useState();
   const [copiedHash, setCopiedHash] = useState(null);
   const [copiedCID, setCopiedCID] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -21,6 +22,7 @@ export default function UploadDocument({ docs, setDocs }) {
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = await provider.getSigner();
+      setSigner(signer);
       setContract(new ethers.Contract(CONTRACT_ADDRESS, artifact.abi, signer));
     })();
   }, []);
@@ -40,14 +42,14 @@ export default function UploadDocument({ docs, setDocs }) {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await getKeyFromPassword(password, salt);
-  
+
     const payload = {
       name: filename,
       data: Array.from(new Uint8Array(data)), // convert ArrayBuffer to array
     };
     const encodedPayload = new TextEncoder().encode(JSON.stringify(payload));
     const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encodedPayload);
-  
+
     return new Blob([salt, iv, new Uint8Array(encrypted)]);
   };
 
@@ -57,7 +59,7 @@ export default function UploadDocument({ docs, setDocs }) {
     const iv = arrayBuffer.slice(16, 28);
     const data = arrayBuffer.slice(28);
     const key = await getKeyFromPassword(password, salt);
-  
+
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
     const decoded = new TextDecoder().decode(decrypted);
     const { name, data: rawData } = JSON.parse(decoded);
@@ -69,7 +71,7 @@ export default function UploadDocument({ docs, setDocs }) {
 
   const onFile = (e) => {
     const file = e.target.files[0];
-    if (!file || !contract) return;
+    if (!file || !contract || !signer) return;
 
     setModalTitle("Enter a password to encrypt the document");
     setPendingAction(() => async (password) => {
@@ -77,6 +79,9 @@ export default function UploadDocument({ docs, setDocs }) {
       const encryptedBlob = await encryptData(buf, password, file.name);
       const digest = await crypto.subtle.digest("SHA-256", buf);
       const hash = "0x" + [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");
+
+      // Hash digital signature
+      const signature = await signer.signMessage(hash);
 
       const formData = new FormData();
       formData.append("file", encryptedBlob, file.name + ".enc");
@@ -95,7 +100,7 @@ export default function UploadDocument({ docs, setDocs }) {
       const data = await res.json();
       const cid = data.IpfsHash;
 
-      const tx = await contract.storeDocument(hash, cid, { gasLimit: 1000000 });
+      const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 1000000 });
       await tx.wait();
 
       setDocs((d) => [...d, { hash, cid, name: file.name }]);
@@ -122,15 +127,15 @@ export default function UploadDocument({ docs, setDocs }) {
       try {
         const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
         if (!response.ok) throw new Error("Download failed");
-  
+
         const encryptedBlob = await response.blob();
         const { filename, buffer } = await decryptData(encryptedBlob, password);
-  
+
         const url = window.URL.createObjectURL(new Blob([buffer]));
         const a = document.createElement("a");
         a.download = filename || "decrypted-file";
         a.href = url;
-  
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

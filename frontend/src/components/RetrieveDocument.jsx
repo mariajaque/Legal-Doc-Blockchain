@@ -9,6 +9,8 @@ export default function RetrieveDocument() {
   const [contract, setContract] = useState();
   const [hash, setHash] = useState("");
   const [cid, setCID] = useState(null);
+  const [signature, setSignature] = useState(null);
+  const [recoveredAddress, setRecoveredAddress] = useState(null);
   const [copiedCID, setCopiedCID] = useState(null);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,17 +31,29 @@ export default function RetrieveDocument() {
 
     try {
       const result = await contract.getDocument(hash);
-      const [, ipfsCID] = result;
+      const [, ipfsCID, , sig] = result;
       if (!ipfsCID || ipfsCID === "") {
         setCID(null);
         setError("No document found for that hash.");
       } else {
         setCID(ipfsCID);
+        setSignature(sig);
+        setRecoveredAddress(null);
         setError(null);
       }
     } catch (err) {
       console.error(err);
       setError("An error occurred while retrieving the document.");
+    }
+  };
+
+  const verifySignature = () => {
+    try {
+      const recovered = ethers.verifyMessage(hash, signature);
+      setRecoveredAddress(recovered);
+    } catch (err) {
+      alert("Invalid signature");
+      console.error(err);
     }
   };
 
@@ -82,7 +96,7 @@ export default function RetrieveDocument() {
     const iv = arrayBuffer.slice(16, 28);
     const data = arrayBuffer.slice(28);
     const key = await getKeyFromPassword(password, salt);
-  
+
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
     const decoded = new TextDecoder().decode(decrypted);
     const { name, data: rawData } = JSON.parse(decoded);
@@ -144,6 +158,11 @@ export default function RetrieveDocument() {
               {copiedCID === cid ? "Copied!" : "Copy CID"}
             </button>
             <button onClick={handleDownload}>Download</button>
+          </div>
+          <div className="signature-wrapper">
+            <p><strong>Signature:</strong> {signature?.slice(0, 20)}... (click verify)</p>
+            <button onClick={verifySignature}>Verify Author</button>
+            {recoveredAddress && <p><strong>Signed by:</strong> {recoveredAddress}</p>}
           </div>
         </div>
       )}
