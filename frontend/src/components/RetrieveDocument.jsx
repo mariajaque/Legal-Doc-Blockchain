@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import PasswordPopUp from "./PasswordPopUp";
-import artifact from "../abis/contracts/LegalDocumentManager.sol/LegalDocumentManager.json";
+import artifact from "../../../artifacts/contracts/LegalDocumentManager.sol/LegalDocumentManager.json";
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_DOC_MANAGER;
 
