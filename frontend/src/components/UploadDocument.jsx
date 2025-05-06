@@ -29,34 +29,46 @@ export default function UploadDocument({ docs, setDocs }) {
   }, []);
 
   useEffect(() => {
-    const fetchDocumentDetails = async () => {
-      if (contract) {
-        const updatedDocs = [];
-        for (const doc of docs) {
-          const { hash } = doc;
-          const documentDetails = await getDocumentDetails(hash);
-          if (documentDetails) {
-            updatedDocs.push({
-              ...doc,
-              timestamp: documentDetails.timestamp,
+    const fetchOwnerDocuments = async () => {
+      if (contract && signer) {
+        const ownerAddress = await signer.getAddress();
+        try {
+          // Fetch the documents only if contract and signer are available
+          const documents = await contract.getDocumentsByOwner(ownerAddress);
+
+          // Ensure documents is an array and not undefined or null
+          if (Array.isArray(documents) && documents.length > 0) {
+            const updatedDocs = documents.map(doc => {
+              // Ensure doc.owner is defined before calling hexlify
+              const owner = doc.owner ? ethers.utils.hexlify(doc.owner) : "Unknown";  // Fallback to "Unknown" if undefined
+
+              return {
+                hash: owner,
+                cid: doc.cid || "N/A", // Ensure CID is not undefined
+                timestamp: new Date(doc.timestamp * 1000).toLocaleString(), // Format timestamp
+              };
             });
+
+            setDocs(updatedDocs); // Update docs state with the fetched documents
           } else {
-            updatedDocs.push(doc); // Fallback if no details found
+            setDocs([]); // Set empty docs if none are found
           }
+        } catch (error) {
+          console.error("Error fetching documents:", error);
+          setDocs([]); // Ensure docs is set to empty array if there's an error
         }
-        setDocs(updatedDocs);
       }
     };
 
-    fetchDocumentDetails();
-  }, [contract, docs, setDocs]);
+    fetchOwnerDocuments();
+  }, [contract, signer, setDocs]);
 
   const getDocumentDetails = async (docHash) => {
     try {
       const [owner, cid, timestamp, signature] = await contract.getDocument(docHash);
       // Convert the BigInt timestamp to a normal number and then to a Date object
-      const timestampString = new Date(Number(timestamp) * 1000).toLocaleString(); // Convert BigInt to number
-      return { owner, cid, timestamp: timestampString, signature }; // Convert timestamp to string for display
+      const timestampString = new Date(Number(timestamp) * 1000).toLocaleString();
+      return { owner, cid, timestamp: timestampString, signature };
     } catch (error) {
       console.error("Error fetching document details:", error);
       return null;
@@ -230,30 +242,34 @@ export default function UploadDocument({ docs, setDocs }) {
 
       <section className="container" aria-label="Document list">
         <h2>Your Documents</h2>
-        <ul>
-          {docs.map(({ hash, cid, timestamp }) => (
-            <li key={hash}>
-              <div>
-                <strong>Uploaded at:</strong> <span>{timestamp}</span> {/* Display Timestamp */}
-              </div>
-              <div>
-                <strong>Hash:</strong> <code>{hash}</code>
-              </div>
-              <div>
-                <strong>CID:</strong> <code>{cid}</code>
-              </div>
-              <div className="actions">
-                <button onClick={() => copyHash(hash)}>
-                  {copiedHash === hash ? "Copied!" : "Copy Hash"}
-                </button>
-                <button onClick={() => copyCID(cid)}>
-                  {copiedCID === cid ? "Copied!" : "Copy CID"}
-                </button>
-                <button onClick={() => forceDownload(cid)}>Download</button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {docs.length === 0 ? (
+          <p>No documents found</p> // Display message if no documents found
+        ) : (
+          <ul>
+            {docs.map(({ hash, cid, timestamp }) => (
+              <li key={hash}>
+                <div>
+                  <strong>Uploaded at:</strong> <span>{timestamp}</span> {/* Display Timestamp */}
+                </div>
+                <div>
+                  <strong>Hash:</strong> <code>{hash}</code>
+                </div>
+                <div>
+                  <strong>CID:</strong> <code>{cid}</code>
+                </div>
+                <div className="actions">
+                  <button onClick={() => copyHash(hash)}>
+                    {copiedHash === hash ? "Copied!" : "Copy Hash"}
+                  </button>
+                  <button onClick={() => copyCID(cid)}>
+                    {copiedCID === cid ? "Copied!" : "Copy CID"}
+                  </button>
+                  <button onClick={() => forceDownload(cid)}>Download</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <PasswordPopUp
