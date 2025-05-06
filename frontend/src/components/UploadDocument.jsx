@@ -14,6 +14,7 @@ export default function UploadDocument({ docs, setDocs }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
+  const [loading, setLoading] = useState(false); // For spinner
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -110,6 +111,8 @@ export default function UploadDocument({ docs, setDocs }) {
 
     setModalTitle("Enter a password to encrypt the document");
     setPendingAction(() => async (password) => {
+      setLoading(true); // Show spinner while processing
+
       const buf = await file.arrayBuffer();
       const encryptedBlob = await encryptData(buf, password, file.name);
       const digest = await crypto.subtle.digest("SHA-256", buf);
@@ -129,14 +132,20 @@ export default function UploadDocument({ docs, setDocs }) {
 
       if (!res.ok) {
         console.error("Error uploading to Pinata:", await res.text());
+        setLoading(false); // Hide spinner
         return;
       }
 
       const data = await res.json();
       const cid = data.IpfsHash;
 
-      const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 1000000 });
-      await tx.wait();
+      try {
+        const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 1000000 });
+        await tx.wait();
+      } catch (err) {
+        console.error("Error storing document in contract:", err);
+        setLoading(false); // Hide spinner
+      }
 
       // Fetch the document details, including the timestamp, after storing the document
       const documentDetails = await getDocumentDetails(hash);
@@ -153,6 +162,7 @@ export default function UploadDocument({ docs, setDocs }) {
         ]);
       }
       e.target.value = null;
+      setLoading(false); // Hide spinner
     });
     setModalOpen(true);
   };
@@ -211,6 +221,11 @@ export default function UploadDocument({ docs, setDocs }) {
           ref={fileInputRef}
           aria-label="Select a PDF or DOCX file"
         />
+        {loading && (
+          <div className="spinner-container">
+            <div className="spinner"></div> {/* Spinner */}
+          </div>
+        )}
       </section>
 
       <section className="container" aria-label="Document list">
