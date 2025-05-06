@@ -3,6 +3,7 @@ import UploadDocument from "./components/UploadDocument";
 import CheckDocument from "./components/CheckDocument";
 import RetrieveDocument from "./components/RetrieveDocument";
 import About from "./components/About";
+import { ethers } from "ethers";
 import "./App.css";
 
 export default function App() {
@@ -12,10 +13,20 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState("about");
+  const [userAddress, setUserAddress] = useState("");
 
   useEffect(() => {
     localStorage.setItem("documents", JSON.stringify(docs));
   }, [docs]);
+
+  useEffect(() => {
+    (async () => {
+      if (!window.ethereum) return;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      setUserAddress(await signer.getAddress());
+    })();
+  }, []);
 
   const renderTab = () => {
     switch (activeTab) {
@@ -40,37 +51,18 @@ export default function App() {
           <div>
             <h1 className="header-title">Legal Doc Vault</h1>
             <p className="contract-address">
-              Contract: {import.meta.env.VITE_DOC_MANAGER}
+              Contract: {import.meta.env.VITE_DOC_MANAGER}<br />
+              You: {userAddress}
             </p>
           </div>
         </div>
       </header>
 
       <nav className="navbar">
-        <button
-          onClick={() => setActiveTab("about")}
-          className={activeTab === "about" ? "active" : ""}
-        >
-          About
-        </button>
-        <button
-          onClick={() => setActiveTab("upload")}
-          className={activeTab === "upload" ? "active" : ""}
-        >
-          Upload
-        </button>
-        <button
-          onClick={() => setActiveTab("check")}
-          className={activeTab === "check" ? "active" : ""}
-        >
-          Verify
-        </button>
-        <button
-          onClick={() => setActiveTab("retrieve")}
-          className={activeTab === "retrieve" ? "active" : ""}
-        >
-          Retrieve
-        </button>
+        <button onClick={() => setActiveTab("about")} className={activeTab === "about" ? "active" : ""}>About</button>
+        <button onClick={() => setActiveTab("upload")} className={activeTab === "upload" ? "active" : ""}>Upload & Sign</button>
+        <button onClick={() => setActiveTab("check")} className={activeTab === "check" ? "active" : ""}>Verify</button>
+        <button onClick={() => setActiveTab("retrieve")} className={activeTab === "retrieve" ? "active" : ""}>Retrieve</button>
       </nav>
 
       <main>{renderTab()}</main>
