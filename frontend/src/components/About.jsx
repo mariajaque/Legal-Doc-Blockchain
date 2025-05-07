@@ -34,16 +34,16 @@ export default function About() {
           <li>📜 Sign documents using your Ethereum address, acting as a decentralized notary</li>
           <li>📦 Store the document hash, digital signature, and IPFS CID on the blockchain</li>
           <li>✅ Verify whether a document has already been registered and if it matches the signature</li>
-          <li>🔓 Retrieve and decrypt uploaded documents using a secure password</li>
+          <li>🔓 Retrieve and decrypt uploaded documents using your Ethereum wallet signature</li>
         </ul>
 
         <p>
           <strong>How to use it:</strong>
         </p>
         <ul className="pill-list usage">
-          <li><strong>Upload & Sign:</strong> Go to the "Upload" tab, select a document, choose a password to encrypt it, and sign it using your Ethereum address.</li>
+          <li><strong>Upload & Sign:</strong> Go to the "Upload" tab, select a document, and sign it using your Ethereum address. The file will be encrypted using your wallet signature automatically.</li>
           <li><strong>Verify:</strong> Use the "Verify" tab to check if a document is already registered and verify the authenticity of the document's signature.</li>
-          <li><strong>Retrieve:</strong> In the "Retrieve" tab, input a known document hash and use the password to decrypt and download the document.</li>
+          <li><strong>Retrieve:</strong> In the "Retrieve" tab, input a known document hash. Your wallet will be used to decrypt the file securely.</li>
         </ul>
 
         <p className="footnote">
