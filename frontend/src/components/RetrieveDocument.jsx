@@ -13,14 +13,19 @@ export default function RetrieveDocument() {
   const [timestamp, setTimestamp] = useState(""); // State for timestamp
   const [copiedCID, setCopiedCID] = useState(null);
   const [error, setError] = useState(null);
+  const [signer, setSigner] = useState();
 
   useEffect(() => {
     (async () => {
       if (!window.ethereum) return alert("Please install MetaMask first.");
       const provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
-      const signer = await provider.getSigner();
-      setContract(new ethers.Contract(CONTRACT_ADDRESS, artifact.abi, signer));
+      const signerInstance = await provider.getSigner();
+      const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, artifact.abi, provider);
+      const writeContract = new ethers.Contract(CONTRACT_ADDRESS, artifact.abi, signerInstance);
+
+      setSigner(signerInstance);
+      setContract(readOnlyContract);
     })();
   }, []);
 
@@ -70,40 +75,19 @@ export default function RetrieveDocument() {
     setTimeout(() => setCopiedCID(null), 2000);
   };
 
-  const generatePassword = (hash) => {
-    return ethers.keccak256(ethers.toUtf8Bytes(hash));
-  };
-
-  async function getKeyFromPassword(password, salt) {
-    const enc = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-      "raw",
-      enc.encode(password),
-      { name: "PBKDF2" },
-      false,
-      ["deriveKey"]
-    );
-    return crypto.subtle.deriveKey(
-      {
-        name: "PBKDF2",
-        salt,
-        iterations: 100000,
-        hash: "SHA-256",
-      },
-      keyMaterial,
-      { name: "AES-GCM", length: 256 },
-      false,
-      ["decrypt"]
-    );
+  async function deriveKeyFromSignature(signer, docHash) {
+    const message = "Encrypting doc: " + docHash;
+    const signature = await signer.signMessage(message);
+    const keyMaterial = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature));
+    return crypto.subtle.importKey("raw", keyMaterial, { name: "AES-GCM" }, false, ["decrypt"]);
   }
 
-  async function decryptData(encryptedBlob, password) {
+  async function decryptData(encryptedBlob, signer, hash) {
     const arrayBuffer = await encryptedBlob.arrayBuffer();
-    const salt = arrayBuffer.slice(0, 16);
-    const iv = arrayBuffer.slice(16, 28);
-    const data = arrayBuffer.slice(28);
-    const key = await getKeyFromPassword(password, salt);
-
+    const iv = arrayBuffer.slice(0, 12); // match UploadDocument
+    const data = arrayBuffer.slice(12);  // rest is encrypted content
+    const key = await deriveKeyFromSignature(signer, hash);
+  
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
     const decoded = new TextDecoder().decode(decrypted);
     const { name, data: rawData } = JSON.parse(decoded);
@@ -117,8 +101,7 @@ export default function RetrieveDocument() {
     try {
       const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
       const encryptedBlob = await response.blob();
-      const password = generatePassword(hash);
-      const { filename, buffer } = await decryptData(encryptedBlob, password);
+      const { filename, buffer } = await decryptData(encryptedBlob, signer, hash);
       const blob = new Blob([buffer]);
 
       const a = document.createElement("a");
