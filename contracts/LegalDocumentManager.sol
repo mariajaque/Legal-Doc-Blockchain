@@ -4,32 +4,44 @@ pragma solidity ^0.8.20;
 /**
  * @title  LegalDocumentManager
  * @notice Stores the SHA-256 hash (or IPFS CID) of a legal document, the
- *         owner who submitted it, a signature proving authorship,
- *         and an optional metadata URI. Once stored,
- *         entries are immutable, providing tamper-evidence on-chain.
+ *         wallet that submitted it, a digital signature proving authorship,
+ *         and a timestamp. Once stored, entries are immutable,
+ *         providing tamper-evidence on-chain.
  */
 contract LegalDocumentManager {
     struct Document {
-        address owner;      // wallet that registered the doc
-        string cid;         // IPFS CID (variable length)
+        address owner;      // wallet that registered the document
+        string cid;         // IPFS content identifier
         uint256 timestamp;  // block time of registration
-        string signature;   // full-length Ethereum signature (variable length)
+        string signature;   // signature of doc hash (signed off-chain by wallet)
     }
 
-    // Mapping to store documents by their hash (more gas efficient than arrays)
+    // Mapping: document hash → Document metadata
     mapping(bytes32 => Document) private documents;
 
     /// Emitted whenever a new document is recorded
     event DocumentStored(bytes32 indexed docHash, address indexed owner, string cid, string signature);
 
+    /**
+     * @notice Registers a document if its hash hasn't been recorded before.
+     * @param docHash SHA-256 digest (32 bytes) of the document, computed off-chain
+     * @param cid IPFS CID pointing to the document (can be encrypted)
+     * @param signature Signature of the hash, signed off-chain by the sender's wallet
+     */
     function storeDocument(bytes32 docHash, string calldata cid, string calldata signature) external {
-        // Ensure the document doesn't already exist
-        require(documents[docHash].owner == address(0), "Document exists");
-        // Store the document for the owner
+        require(documents[docHash].owner == address(0), "Document already exists");
         documents[docHash] = Document(msg.sender, cid, block.timestamp, signature);
         emit DocumentStored(docHash, msg.sender, cid, signature);
     }
 
+    /**
+     * @notice Retrieves the stored metadata for a given document hash.
+     * @param docHash Document hash to look up
+     * @return owner Address that registered the document
+     * @return cid IPFS CID of the document
+     * @return timestamp Block timestamp when registered
+     * @return signature Signature submitted at registration
+     */
     function getDocument(bytes32 docHash) external view returns (
         address owner,
         string memory cid,
@@ -41,6 +53,11 @@ contract LegalDocumentManager {
         return (d.owner, d.cid, d.timestamp, d.signature);
     }
 
+    /**
+     * @notice Checks if a document has been registered.
+     * @param docHash Document hash to verify
+     * @return True if the document exists
+     */
     function verify(bytes32 docHash) external view returns (bool) {
         return documents[docHash].owner != address(0);
     }
