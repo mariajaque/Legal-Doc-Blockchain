@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import artifact from "../../../artifacts/contracts/LegalDocumentManager.sol/LegalDocumentManager.json";
-import PasswordPopUp from "./PasswordPopUp";
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_DOC_MANAGER;
 const PINATA_JWT = import.meta.env.VITE_PINATA_JWT;
@@ -11,9 +10,6 @@ export default function UploadDocument({ docs, setDocs }) {
   const [signer, setSigner] = useState();
   const [copiedHash, setCopiedHash] = useState(null);
   const [copiedCID, setCopiedCID] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalTitle, setModalTitle] = useState("");
-  const [pendingAction, setPendingAction] = useState(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -28,35 +24,6 @@ export default function UploadDocument({ docs, setDocs }) {
     })();
   }, []);
 
-  useEffect(() => {
-    const fetchOwnerDocuments = async () => {
-      if (contract && signer) {
-        const ownerAddress = await signer.getAddress();
-        try {
-          const documentHashes = [];
-
-          const updatedDocs = await Promise.all(
-            documentHashes.map(async (docHash) => {
-              const documentDetails = await contract.getDocument(docHash);
-              return {
-                hash: docHash,
-                cid: documentDetails.cid || "N/A",
-                timestamp: new Date(documentDetails.timestamp * 1000).toLocaleString(),
-              };
-            })
-          );
-
-          setDocs(updatedDocs);
-        } catch (error) {
-          console.error("Error fetching documents:", error);
-          setDocs([]);
-        }
-      }
-    };
-
-    fetchOwnerDocuments();
-  }, [contract, signer, setDocs]);
-
   const getDocumentDetails = async (docHash) => {
     try {
       const [owner, cid, timestamp, signature] = await contract.getDocument(docHash);
@@ -68,21 +35,16 @@ export default function UploadDocument({ docs, setDocs }) {
     }
   };
 
-  const getKeyFromPassword = async (password, salt) => {
-    const enc = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
-    return crypto.subtle.deriveKey({
-      name: "PBKDF2",
-      salt,
-      iterations: 100000,
-      hash: "SHA-256",
-    }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const deriveKeyFromSignature = async (signer, docHash) => {
+    const message = "Encrypting doc: " + docHash;
+    const signature = await signer.signMessage(message);
+    const keyMaterial = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature));
+    return crypto.subtle.importKey("raw", keyMaterial, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
   };
 
-  const encryptData = async (data, password, filename) => {
-    const salt = crypto.getRandomValues(new Uint8Array(16));
+  const encryptData = async (data, signer, docHash, filename) => {
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const key = await getKeyFromPassword(password, salt);
+    const key = await deriveKeyFromSignature(signer, docHash);
 
     const payload = {
       name: filename,
@@ -91,15 +53,14 @@ export default function UploadDocument({ docs, setDocs }) {
     const encodedPayload = new TextEncoder().encode(JSON.stringify(payload));
     const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encodedPayload);
 
-    return new Blob([salt, iv, new Uint8Array(encrypted)]);
+    return new Blob([iv, new Uint8Array(encrypted)]);
   };
 
-  const decryptData = async (encryptedBlob, password) => {
+  const decryptData = async (encryptedBlob, signer, docHash) => {
     const arrayBuffer = await encryptedBlob.arrayBuffer();
-    const salt = arrayBuffer.slice(0, 16);
-    const iv = arrayBuffer.slice(16, 28);
-    const data = arrayBuffer.slice(28);
-    const key = await getKeyFromPassword(password, salt);
+    const iv = arrayBuffer.slice(0, 12);
+    const data = arrayBuffer.slice(12);
+    const key = await deriveKeyFromSignature(signer, docHash);
 
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
     const decoded = new TextDecoder().decode(decrypted);
@@ -113,16 +74,14 @@ export default function UploadDocument({ docs, setDocs }) {
   const onFile = (e) => {
     const file = e.target.files[0];
     if (!file || !contract || !signer) return;
+    setLoading(true);
 
-    setModalTitle("Enter a password to encrypt the document");
-    setPendingAction(() => async (password) => {
-      setLoading(true);
-
+    (async () => {
       const buf = await file.arrayBuffer();
-      const encryptedBlob = await encryptData(buf, password, file.name);
       const digest = await crypto.subtle.digest("SHA-256", buf);
       const hash = "0x" + [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");
 
+      const encryptedBlob = await encryptData(buf, signer, hash, file.name);
       const signature = await signer.signMessage(hash);
 
       const formData = new FormData();
@@ -144,11 +103,12 @@ export default function UploadDocument({ docs, setDocs }) {
       const cid = data.IpfsHash;
 
       try {
-        const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 100000 });
+        const tx = await contract.storeDocument(hash, cid, signature, { gasLimit: 10000000 });
         await tx.wait();
       } catch (err) {
         console.error("Error storing document in contract:", err);
         setLoading(false);
+        return;
       }
 
       const documentDetails = await getDocumentDetails(hash);
@@ -156,18 +116,17 @@ export default function UploadDocument({ docs, setDocs }) {
       if (documentDetails) {
         setDocs((d) => [
           ...d,
-          { 
-            hash, 
-            cid, 
-            name: file.name, 
-            timestamp: documentDetails.timestamp 
-          }
+          {
+            hash,
+            cid,
+            name: file.name,
+            timestamp: documentDetails.timestamp,
+          },
         ]);
       }
       e.target.value = null;
       setLoading(false);
-    });
-    setModalOpen(true);
+    })();
   };
 
   const copyHash = (hash) => {
@@ -182,35 +141,27 @@ export default function UploadDocument({ docs, setDocs }) {
     setTimeout(() => setCopiedCID(null), 2000);
   };
 
-  const forceDownload = (cid) => {
-    setModalTitle("Enter password to decrypt the document");
-    setPendingAction(() => async (password) => {
-      try {
-        const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
-        if (!response.ok) throw new Error("Download failed");
+  const forceDownload = async (cid, hash) => {
+    try {
+      const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
+      if (!response.ok) throw new Error("Download failed");
 
-        const encryptedBlob = await response.blob();
-        const { filename, buffer } = await decryptData(encryptedBlob, password);
+      const encryptedBlob = await response.blob();
+      const { filename, buffer } = await decryptData(encryptedBlob, signer, hash);
 
-        const url = window.URL.createObjectURL(new Blob([buffer]));
-        const a = document.createElement("a");
-        a.download = filename || "decrypted-file";
-        a.href = url;
+      const url = window.URL.createObjectURL(new Blob([buffer]));
+      const a = document.createElement("a");
+      a.download = filename || "decrypted-file";
+      a.href = url;
 
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } catch (err) {
-        if (err.name === "OperationError") {
-          alert("Incorrect password or corrupted file.");
-        } else {
-          console.error("Decryption error:", err);
-          alert("An error occurred. Try again.");
-        }
-      }
-    });
-    setModalOpen(true);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Decryption error:", err);
+      alert("An error occurred. Try again.");
+    }
   };
 
   return (
@@ -233,52 +184,35 @@ export default function UploadDocument({ docs, setDocs }) {
 
       <section className="container" aria-label="Document list">
         <h2>Your Documents</h2>
-        {docs.length === 0 ?
-          <p>No documents found</p> // Display message if no documents found
-          : (
-            <ul>
-              {docs.map(({ hash, cid, timestamp }) => (
-                <li key={hash}>
-                  <div>
-                    <strong>Uploaded at:</strong> <span>{timestamp}</span>
-                  </div>
-                  <div>
-                    <strong>Hash:</strong> <code>{hash}</code>
-                  </div>
-                  <div>
-                    <strong>CID:</strong> <code>{cid}</code>
-                  </div>
-                  <div className="actions">
-                    <button onClick={() => copyHash(hash)}>
-                      {copiedHash === hash ? "Copied!" : "Copy Hash"}
-                    </button>
-                    <button onClick={() => copyCID(cid)}>
-                      {copiedCID === cid ? "Copied!" : "Copy CID"}
-                    </button>
-                    <button onClick={() => forceDownload(cid)}>Download</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+        {docs.length === 0 ? (
+          <p>No documents found</p>
+        ) : (
+          <ul>
+            {docs.map(({ hash, cid, timestamp }) => (
+              <li key={hash}>
+                <div>
+                  <strong>Uploaded at:</strong> <span>{timestamp}</span>
+                </div>
+                <div>
+                  <strong>Hash:</strong> <code>{hash}</code>
+                </div>
+                <div>
+                  <strong>CID:</strong> <code>{cid}</code>
+                </div>
+                <div className="actions">
+                  <button onClick={() => copyHash(hash)}>
+                    {copiedHash === hash ? "Copied!" : "Copy Hash"}
+                  </button>
+                  <button onClick={() => copyCID(cid)}>
+                    {copiedCID === cid ? "Copied!" : "Copy CID"}
+                  </button>
+                  <button onClick={() => forceDownload(cid, hash)}>Download</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
-
-      <PasswordPopUp
-        isOpen={modalOpen}
-        title={modalTitle}
-        onSubmit={async (pw) => {
-          setModalOpen(false);
-          if (pendingAction) await pendingAction(pw);
-          setPendingAction(null);
-        }}
-        onCancel={() => {
-          setModalOpen(false);
-          setPendingAction(null);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = null;
-          }
-        }}
-      />
     </>
   );
 }

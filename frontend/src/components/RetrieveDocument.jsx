@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import PasswordPopUp from "./PasswordPopUp";
 import artifact from "../../../artifacts/contracts/LegalDocumentManager.sol/LegalDocumentManager.json";
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_DOC_MANAGER;
@@ -14,8 +13,6 @@ export default function RetrieveDocument() {
   const [timestamp, setTimestamp] = useState(""); // State for timestamp
   const [copiedCID, setCopiedCID] = useState(null);
   const [error, setError] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -27,35 +24,23 @@ export default function RetrieveDocument() {
     })();
   }, []);
 
-  const getDocumentTimestamp = async (docHash) => {
-    try {
-      const [, , timestamp] = await contract.getDocument(docHash);
-      const timestampString = new Date(Number(timestamp) * 1000).toLocaleString(); // Convert BigInt to number
-      setTimestamp(timestampString); // Set timestamp in state
-    } catch (error) {
-      console.error("Error fetching document timestamp:", error);
-      setTimestamp(""); // Reset timestamp in case of error
-    }
-  };
-
   const retrieve = async () => {
     if (!hash || !contract) return;
 
     try {
-      const result = await contract.getDocument(hash);
-      const [, ipfsCID, , sig] = result;
+      const [owner, ipfsCID, ts, sig] = await contract.getDocument(hash);
+
       if (!ipfsCID || ipfsCID === "") {
         setCID(null);
         setError("No document found for that hash.");
-      } else {
-        setCID(ipfsCID);
-        setSignature(sig);
-        setRecoveredAddress(null); // Reset address when a new document is fetched
-        setError(null);
-
-        // Fetch timestamp after document retrieval
-        await getDocumentTimestamp(hash); // Get the timestamp
+        return;
       }
+
+      setCID(ipfsCID);
+      setSignature(sig);
+      setTimestamp(new Date(Number(ts) * 1000).toLocaleString());
+      setRecoveredAddress(null); // Reset address when a new document is fetched
+      setError(null);
     } catch (err) {
       console.error(err);
       setError("An error occurred while retrieving the document.");
@@ -79,16 +64,14 @@ export default function RetrieveDocument() {
     if (e.key === "Enter") retrieve();
   };
 
-  const copyCID = (cid) => {
-    navigator.clipboard.writeText(cid);
-    setCopiedCID(cid);
-    setTimeout(() => setCopiedCID(null), 2000);
-  };
-
-  const copySignature = (text) => {
+  const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     setCopiedCID(text);
     setTimeout(() => setCopiedCID(null), 2000);
+  };
+
+  const generatePassword = (hash) => {
+    return ethers.keccak256(ethers.toUtf8Bytes(hash));
   };
 
   async function getKeyFromPassword(password, salt) {
@@ -130,27 +113,25 @@ export default function RetrieveDocument() {
     };
   }
 
-  const handleDownload = () => {
-    setPendingAction(() => async (password) => {
-      try {
-        const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
-        const encryptedBlob = await response.blob();
-        const { filename, buffer } = await decryptData(encryptedBlob, password);
-        const blob = new Blob([buffer]);
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
+      const encryptedBlob = await response.blob();
+      const password = generatePassword(hash);
+      const { filename, buffer } = await decryptData(encryptedBlob, password);
+      const blob = new Blob([buffer]);
 
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = filename || "document.pdf";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-      } catch (err) {
-        alert("Failed to decrypt or download file.");
-        console.error(err);
-      }
-    });
-    setModalOpen(true);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename || "document.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      alert("Failed to decrypt or download file.");
+      console.error(err);
+    }
   };
 
   return (
@@ -187,7 +168,7 @@ export default function RetrieveDocument() {
             <code>{cid}</code>
           </div>
           <div className="actions">
-            <button onClick={() => copyCID(cid)}>
+            <button onClick={() => copyToClipboard(cid)}>
               {copiedCID === cid ? "Copied!" : "Copy CID"}
             </button>
           </div>
@@ -196,7 +177,7 @@ export default function RetrieveDocument() {
             <code>{signature}</code>
           </div>
           <div className="actions">
-            <button onClick={() => copySignature(signature)}>
+            <button onClick={() => copyToClipboard(signature)}>
               {copiedCID === signature ? "Copied!" : "Copy Signature"}
             </button>
           </div>
@@ -205,26 +186,12 @@ export default function RetrieveDocument() {
             <code>{recoveredAddress || "Not verified yet"}</code>
           </div>
           <div className="actions">
-            <button onClick={() => copySignature(recoveredAddress)}>
+            <button onClick={() => copyToClipboard(recoveredAddress)}>
               {copiedCID === recoveredAddress ? "Copied!" : "Copy Address"}
             </button>
           </div>
         </div>
       )}
-
-      <PasswordPopUp
-        isOpen={modalOpen}
-        title="Enter the password to decrypt"
-        onSubmit={async (pw) => {
-          setModalOpen(false);
-          if (pendingAction) await pendingAction(pw);
-          setPendingAction(null);
-        }}
-        onCancel={() => {
-          setModalOpen(false);
-          setPendingAction(null);
-        }}
-      />
     </section>
   );
 }
