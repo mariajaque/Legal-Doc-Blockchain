@@ -11,9 +11,9 @@
 
 ### Features
 
-- 🔐 **Secure upload** of documents encrypted with a user-defined password before storage.
+- 🔐 **Secure upload** of documents automatically encrypted using your Ethereum wallet signature.
 - 🧾 **Hash verification** to check if a document has been previously registered on-chain.
-- 📥 **Decryption-based retrieval**, requiring the correct password to access and download files.
+- 📥 **Decryption-based retrieval**, using your Ethereum wallet to securely unlock and download files.
 - 🌐 **Decentralized file storage** using **IPFS** and **Pinata**, ensuring availability without relying on centralized servers.
 - ⛓️ **Blockchain-backed authenticity**, with **SHA-256** hashes stored immutably via smart contracts.
 - 🧑‍💼 **User-friendly interface** with an “About” section that explains the purpose, usage, and real-world applications of the platform.
@@ -163,3 +163,6 @@ When opening the web application, you will be asked to connect your MetaMask wal
 
 ### 5. Interact with the web application:
 You can now use the web application to interact with the LegalDocModule smart contract.
+
+Note: You no longer need to enter a password to decrypt documents — Legal Doc Vault uses your Ethereum wallet to derive the decryption key securely.
+
